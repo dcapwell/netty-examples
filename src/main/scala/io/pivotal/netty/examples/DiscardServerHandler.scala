@@ -1,20 +1,23 @@
 package io.pivotal.netty.examples
 
-import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.SocketChannel
-import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelInitializer, ChannelOption}
-import io.netty.util.ReferenceCountUtil
+import io.netty.buffer.ByteBuf
+import io.netty.channel._
+import io.netty.util.{CharsetUtil, ReferenceCountUtil}
 
 class DiscardServerHandler extends ChannelInboundHandlerAdapter {
   override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
-    // this is the same as the below.  Handlers deal with reference counted objects
-    // so we need to clean them up ourselves
-
-    //    msg.asInstanceOf[ByteBuf].release()
+    val in = msg.asInstanceOf[ByteBuf];
     try {
-      // do nothing
+      while (in.isReadable()) {
+        // (1)
+        val count = in.readableBytes()
+        val bytes = Array.ofDim[Byte](count)
+        in.readBytes(bytes)
+        val str = new String(bytes, CharsetUtil.UTF_8)
+        println(str)
+        //        System.out.println(in.toString(io.netty.util.CharsetUtil.UTF_8))
+        // toString doesn't consume the bytes, so would loop forever
+      }
     } finally ReferenceCountUtil.release(msg)
   }
 
@@ -24,30 +27,6 @@ class DiscardServerHandler extends ChannelInboundHandlerAdapter {
   }
 }
 
-object DiscardServerHandler extends App {
-  val port = 0
-
-  val bossGroup = new NioEventLoopGroup()
-  val workerGroup = new NioEventLoopGroup()
-
-  try {
-    val childHandler = new ChannelInitializer[SocketChannel] {
-      override def initChannel(ch: SocketChannel): Unit =
-        ch.pipeline().addLast(new DiscardServerHandler)
-    }
-
-    val bootstrap = new ServerBootstrap().
-      group(bossGroup, workerGroup).
-      channel(classOf[NioServerSocketChannel]).
-      childHandler(childHandler).
-      option(ChannelOption.SO_BACKLOG, 128).
-      childOption(ChannelOption.SO_KEEPALIVE, true)
-
-    val future = bootstrap.bind(port).sync()
-
-    future.channel().close().sync()
-  } finally {
-    workerGroup.shutdownGracefully()
-    bossGroup.shutdownGracefully()
-  }
+object DiscardServerHandler extends Server {
+  override def handler(): ChannelHandler = new DiscardServerHandler
 }
