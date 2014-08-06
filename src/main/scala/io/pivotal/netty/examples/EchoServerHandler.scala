@@ -14,5 +14,5 @@ class EchoServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object EchoServerHandler extends Server {
-  override def handler(): ChannelHandler = new EchoServerHandler
+  override def handlers(): List[ChannelHandler] = List(new EchoServerHandler)
 }

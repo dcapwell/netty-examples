@@ -28,5 +28,5 @@ class DiscardServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object DiscardServerHandler extends Server {
-  override def handler(): ChannelHandler = new DiscardServerHandler
+  override def handlers(): List[ChannelHandler] = List(new DiscardServerHandler)
 }
