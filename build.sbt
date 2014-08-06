@@ -15,7 +15,12 @@ javacOptions in doc := Seq("-source", "1.7")
 
 parallelExecution in Test := true
 
-scalacOptions ++= Seq(Opts.compile.unchecked, Opts.compile.deprecation, Opts.compile.explaintypes)
+scalacOptions ++= Seq(
+  Opts.compile.unchecked,
+  Opts.compile.deprecation,
+  Opts.compile.explaintypes,
+  "-feature"
+)
 
 libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % scalazVersion,
