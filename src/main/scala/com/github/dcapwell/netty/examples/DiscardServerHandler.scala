@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
@@ -28,5 +28,5 @@ class DiscardServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object DiscardServerHandler extends Server {
-  override def pipeline(): List[ChannelHandler] = List(new DiscardServerHandler)
+  override def workerHandlers(): List[ChannelHandler] = List(new DiscardServerHandler)
 }

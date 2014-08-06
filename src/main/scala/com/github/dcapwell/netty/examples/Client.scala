@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.socket.SocketChannel

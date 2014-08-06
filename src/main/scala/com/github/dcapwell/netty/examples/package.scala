@@ -1,4 +1,4 @@
-package io.pivotal.netty
+package com.github.dcapwell.netty
 
 import io.netty.channel.{ChannelFuture, ChannelFutureListener}
 

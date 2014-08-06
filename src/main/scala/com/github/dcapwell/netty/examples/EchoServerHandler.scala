@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import io.netty.channel._
 
@@ -14,5 +14,5 @@ class EchoServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object EchoServerHandler extends Server {
-  override def pipeline(): List[ChannelHandler] = List(new EchoServerHandler)
+  override def workerHandlers(): List[ChannelHandler] = List(new EchoServerHandler)
 }

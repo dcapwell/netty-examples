@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.{ChannelHandler, ChannelOption, ChannelInitializer}
@@ -15,7 +15,7 @@ trait Server extends App {
   try {
     val childHandler = new ChannelInitializer[SocketChannel] {
       override def initChannel(ch: SocketChannel): Unit =
-        ch.pipeline().addLast(pipeline(): _*)
+        ch.pipeline().addLast(workerHandlers(): _*)
     }
 
     val bootstrap = new ServerBootstrap().
@@ -38,5 +38,5 @@ trait Server extends App {
     bossGroup.shutdownGracefully()
   }
 
-  def pipeline(): List[ChannelHandler]
+  def workerHandlers(): List[ChannelHandler]
 }

@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -58,7 +58,7 @@ object FileServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object FileServer extends Server {
-  override def pipeline(): List[ChannelHandler] =
+  override def workerHandlers(): List[ChannelHandler] =
     List(
       new StringDecoder(CharsetUtil.UTF_8),
       FileRequestDecoder,

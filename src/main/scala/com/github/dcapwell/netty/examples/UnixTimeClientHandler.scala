@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import java.util.Date
 
@@ -61,6 +61,6 @@ object UnixTimeServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object UnixTimeServer extends Server {
-  override def pipeline(): List[ChannelHandler] =
+  override def workerHandlers(): List[ChannelHandler] =
     List(UnixTimeEncoder, UnixTimeServerHandler)
 }

@@ -1,4 +1,4 @@
-package io.pivotal.netty.examples
+package com.github.dcapwell.netty.examples
 
 import java.util
 import java.util.Date
@@ -23,7 +23,6 @@ class TimeServerHandler extends ChannelInboundHandlerAdapter {
     data.writeInt((System.currentTimeMillis() / 1000l + 2208988800L).asInstanceOf[Int])
 
     val future = ctx.writeAndFlush(data)
-    import io.pivotal.netty.examples.FunctionToChannelFutureListener
 
     future.addListener((f: ChannelFuture) => ctx.close())
   }
@@ -35,7 +34,7 @@ class TimeServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object TimeServerHandler extends Server {
-  override def pipeline(): List[ChannelHandler] = List(new TimeServerHandler())
+  override def workerHandlers(): List[ChannelHandler] = List(new TimeServerHandler())
 }
 
 class TimeDecoder extends ByteToMessageDecoder {

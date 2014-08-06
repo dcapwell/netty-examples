@@ -1,7 +1,7 @@
 
 val scalazVersion = "7.0.6"
 
-organization := "io.pivotal"
+organization := "com.github.dcapwell"
 
 scalaVersion := "2.10.4"
 
