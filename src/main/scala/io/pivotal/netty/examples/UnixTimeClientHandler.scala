@@ -61,6 +61,6 @@ object UnixTimeServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object UnixTimeServer extends Server {
-  override def handlers(): List[ChannelHandler] =
+  override def pipeline(): List[ChannelHandler] =
     List(UnixTimeEncoder, UnixTimeServerHandler)
 }

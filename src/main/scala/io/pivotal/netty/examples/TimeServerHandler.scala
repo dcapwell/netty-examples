@@ -35,7 +35,7 @@ class TimeServerHandler extends ChannelInboundHandlerAdapter {
 }
 
 object TimeServerHandler extends Server {
-  override def handlers(): List[ChannelHandler] = List(new TimeServerHandler())
+  override def pipeline(): List[ChannelHandler] = List(new TimeServerHandler())
 }
 
 class TimeDecoder extends ByteToMessageDecoder {

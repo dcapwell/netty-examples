@@ -15,7 +15,7 @@ trait Server extends App {
   try {
     val childHandler = new ChannelInitializer[SocketChannel] {
       override def initChannel(ch: SocketChannel): Unit =
-        ch.pipeline().addLast(handlers(): _*)
+        ch.pipeline().addLast(pipeline(): _*)
     }
 
     val bootstrap = new ServerBootstrap().
@@ -38,5 +38,5 @@ trait Server extends App {
     bossGroup.shutdownGracefully()
   }
 
-  def handlers(): List[ChannelHandler]
+  def pipeline(): List[ChannelHandler]
 }
