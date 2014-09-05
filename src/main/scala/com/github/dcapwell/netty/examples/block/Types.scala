@@ -38,6 +38,10 @@ object Response {
       val size = Size(data.size + Longs.BYTES)
       val header = ResponseHeader(MessageResponseType.GetBlockResponse, size)
       Response(header, msg)
+    case PutBlockSuccess(_) =>
+      val size = Size(Longs.BYTES)
+      val header = ResponseHeader(MessageResponseType.PutBlockSuccess, size)
+      Response(header, msg)
     case BlockNotFound(blockId) =>
       val header = ResponseHeader(MessageResponseType.BlockNotFound)
       Response(header, msg)

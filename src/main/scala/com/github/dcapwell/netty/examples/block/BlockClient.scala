@@ -4,26 +4,22 @@ import java.util
 
 import com.github.dcapwell.netty.examples.Client
 import com.google.common.base.Charsets
-import io.netty.buffer.ByteBuf
+import io.netty.buffer.{Unpooled, ByteBuf}
 import io.netty.channel._
 import io.netty.handler.codec.{MessageToByteEncoder, MessageToMessageEncoder}
 
 object BlockClient extends Client {
-  override def port: Int = 56706
+  override def port: Int = 56988
 
   override def pipeline: List[ChannelHandler] = List(
     new HeaderEncoder,
     new MessageEncoder,
     new RequestEncoder,
-    new Worker
+    new PutWorker
   )
 }
 
-class Worker extends ChannelInboundHandlerAdapter {
-  override def channelActive(ctx: ChannelHandlerContext): Unit = {
-    ctx.writeAndFlush(get(BlockId(1)))
-  }
-
+abstract class PrintReader extends ChannelInboundHandlerAdapter {
   override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
     val in = msg.asInstanceOf[ByteBuf]
     if (in.readableBytes() > 4) {
@@ -34,10 +30,28 @@ class Worker extends ChannelInboundHandlerAdapter {
       ctx.close()
     }
   }
+}
+
+class GetWorker extends PrintReader {
+  override def channelActive(ctx: ChannelHandlerContext): Unit = {
+    ctx.writeAndFlush(get(BlockId(10)))
+  }
 
   private[this] def get(blockId: BlockId): Request = {
     val msg = GetBlock(blockId, None, None)
-    val header = RequestHeader(Version(1), MessageType.Get, Size(Message.GetBlockSize))
+    val header = RequestHeader(CurrentVersion, MessageType.Get, Size(Message.GetBlockSize))
+    Request(header, msg)
+  }
+}
+
+class PutWorker extends PrintReader {
+  override def channelActive(ctx: ChannelHandlerContext): Unit = {
+    ctx.writeAndFlush(put(BlockId(10), "This is data that I would like to save".getBytes()))
+  }
+
+  private[this] def put(blockId: BlockId, data: Array[Byte]): Request = {
+    val msg = PutBlock(blockId, data)
+    val header = RequestHeader(CurrentVersion, MessageType.Put, Size(Message.putSize(data)))
     Request(header, msg)
   }
 }
@@ -45,9 +59,13 @@ class Worker extends ChannelInboundHandlerAdapter {
 class MessageEncoder extends MessageToByteEncoder[Message] {
   override def encode(ctx: ChannelHandlerContext, msg: Message, out: ByteBuf): Unit = msg match {
     case GetBlock(blockId, offset, length) =>
-      out.writeLong(blockId.value)
+      blockId.write(out)
       out.writeInt(Message.unwrap(offset))
       out.writeInt(Message.unwrap(length))
+
+    case PutBlock(blockId, data) =>
+      blockId.write(out)
+      out.writeBytes(Unpooled.wrappedBuffer(data))
   }
 }
 

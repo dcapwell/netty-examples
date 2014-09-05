@@ -3,6 +3,7 @@ package com.github.dcapwell.netty.examples.block
 import java.util
 
 import com.github.dcapwell.netty.examples.Server
+import com.google.common.base.Charsets
 import com.google.common.primitives.Longs
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
@@ -51,9 +52,11 @@ class RequestDecoder extends ByteToMessageDecoder {
     case Get =>
       GetBlock(BlockId(buf.readLong()), Message.wrap(buf.readInt()), Message.wrap(buf.readInt()))
     case Put =>
+      val blockId = BlockId(buf.readLong())
       val data = Array.ofDim[Byte](header.messageSize.value - Longs.BYTES)
-      buf.readBytes(data)
-      PutBlock(BlockId(buf.readLong()), data)
+      buf.readBytes(data, 0, data.length)
+      println(new String(data, Charsets.UTF_8))
+      PutBlock(blockId, data)
   }
 }
 

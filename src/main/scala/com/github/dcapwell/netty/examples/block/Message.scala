@@ -5,6 +5,8 @@ import com.google.common.primitives.{Ints, Longs}
 trait Message extends AnyRef
 
 object Message {
+  def putSize(bytes: Array[Byte]): Int = Longs.BYTES + bytes.size
+
   val GetBlockSize = Longs.BYTES + Ints.BYTES * 2
 
   def wrap(value: Int): Option[Int] =
