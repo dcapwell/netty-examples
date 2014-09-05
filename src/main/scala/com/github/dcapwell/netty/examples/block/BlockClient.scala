@@ -9,7 +9,7 @@ import io.netty.channel._
 import io.netty.handler.codec.{MessageToByteEncoder, MessageToMessageEncoder}
 
 object BlockClient extends Client {
-  override def port: Int = 56120
+  override def port: Int = 56690
 
   override def pipeline: List[ChannelHandler] = List(
     new HeaderEncoder,
@@ -27,8 +27,11 @@ class Worker extends ChannelInboundHandlerAdapter {
   override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
     val in = msg.asInstanceOf[ByteBuf]
     if (in.readableBytes() > 4) {
-      println(in.readLong())
+      println(s"Version: ${in.readLong()}")
+      println(s"Type: ${MessageResponseType(in.readInt())}")
+      println(s"Size: ${in.readInt()}")
       println(in.toString(Charsets.UTF_8))
+      ctx.close()
     }
   }
 

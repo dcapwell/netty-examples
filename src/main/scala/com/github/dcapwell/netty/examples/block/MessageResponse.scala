@@ -1,12 +1,26 @@
 package com.github.dcapwell.netty.examples.block
 
-trait MessageResponse extends Any
+import io.netty.buffer.{Unpooled, ByteBuf}
 
-case class GetBlockResponse(blockId: BlockId, data: Array[Byte]) extends MessageResponse
+trait MessageResponse extends Any with Writable
 
-case class BlockNotFound(blockId: BlockId) extends MessageResponse
+case class GetBlockResponse(blockId: BlockId, data: Array[Byte]) extends MessageResponse {
+  override def write(out: ByteBuf): Unit = {
+    blockId write out
+    out.writeBytes(Unpooled.wrappedBuffer(data))
+  }
+}
+
+case class BlockNotFound(blockId: BlockId) extends MessageResponse {
+  override def write(out: ByteBuf): Unit = blockId.write(out)
+}
 
 object MessageResponseType extends Enumeration {
+
   type MessageResponseType = Value
   val GetBlockResponse, BlockNotFound = Value
+
+  def write(responseType: MessageResponseType, buf: ByteBuf) = {
+    buf.writeInt(responseType.id)
+  }
 }

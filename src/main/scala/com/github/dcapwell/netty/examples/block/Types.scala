@@ -1,12 +1,19 @@
 package com.github.dcapwell.netty.examples.block
 
 import com.google.common.primitives.{Ints, Longs}
+import io.netty.buffer.ByteBuf
 
-case class BlockId(value: Long) extends AnyVal
+case class BlockId(value: Long) extends AnyVal with Writable {
+  override def write(out: ByteBuf): Unit = out.writeLong(value)
+}
 
-case class Version(value: Long) extends AnyVal
+case class Version(value: Long) extends AnyVal with Writable {
+  override def write(out: ByteBuf): Unit = out.writeLong(value)
+}
 
-case class Size(value: Int) extends AnyVal
+case class Size(value: Int) extends AnyVal with Writable {
+  override def write(out: ByteBuf): Unit = out.writeInt(value)
+}
 
 
 case class Request(header: RequestHeader, message: Message)
@@ -18,7 +25,12 @@ object RequestHeader {
   val Size: Int = Longs.BYTES + Ints.BYTES + Ints.BYTES
 }
 
-case class Response(header: ResponseHeader, response: MessageResponse)
+case class Response(header: ResponseHeader, response: MessageResponse) extends Writable {
+  override def write(out: ByteBuf): Unit = {
+    header.write(out)
+    response.write(out)
+  }
+}
 
 object Response {
   def apply(msg: MessageResponse): Response = msg match {
@@ -34,7 +46,13 @@ object Response {
 
 case class ResponseHeader(version: Version,
                           messageType: MessageResponseType.MessageResponseType,
-                          messageSize: Size)
+                          messageSize: Size) extends Writable {
+  override def write(out: ByteBuf): Unit = {
+    version.write(out)
+    MessageResponseType.write(messageType, out)
+    messageSize.write(out)
+  }
+}
 
 object ResponseHeader {
   // version + type, message size

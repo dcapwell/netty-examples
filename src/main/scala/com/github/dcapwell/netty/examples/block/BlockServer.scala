@@ -3,10 +3,9 @@ package com.github.dcapwell.netty.examples.block
 import java.util
 
 import com.github.dcapwell.netty.examples.Server
-import com.google.common.primitives.Longs
-import io.netty.buffer.{Unpooled, ByteBuf}
+import io.netty.buffer.ByteBuf
 import io.netty.channel._
-import io.netty.handler.codec.{ByteToMessageDecoder, MessageToMessageDecoder}
+import io.netty.handler.codec.{MessageToByteEncoder, ByteToMessageDecoder}
 
 object BlockServer extends Server {
   lazy val store: BlockStore = {
@@ -18,27 +17,25 @@ object BlockServer extends Server {
   }
 
   override def workerHandlers(): List[ChannelHandler] = List(
-    new HeaderDecoder,
-    new MessageDecoder(store),
-    new ResponseWriter
+    new RequestDecoder,
+    new WritableEncoder,
+    new ServerHandler(store)
   )
 }
 
-import MessageType._
+import com.github.dcapwell.netty.examples.block.MessageType._
 
-class HeaderDecoder extends ByteToMessageDecoder {
+class RequestDecoder extends ByteToMessageDecoder {
 
   override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
     if (in.readableBytes() >= RequestHeader.Size) {
       val readerIndex = in.readerIndex()
       val header = parseHeader(in)
 
-      println(s"Header: $header")
-
       // reset in for next iteration if not enough data
       if (in.readableBytes() < header.messageSize.value) in.readerIndex(readerIndex)
       else {
-        out add parseMessage(in, header.messageType)
+        out add Request(header, parseMessage(in, header.messageType))
         ctx.pipeline().remove(this)
       }
     }
@@ -55,41 +52,26 @@ class HeaderDecoder extends ByteToMessageDecoder {
   }
 }
 
-class MessageDecoder(store: BlockStore) extends MessageToMessageDecoder[Message] {
-  override def decode(ctx: ChannelHandlerContext, msg: Message, out: util.List[AnyRef]): Unit = msg match {
-    case GetBlock(blockId, offset, length) =>
-      val result = for {
-        data <- store(blockId).right
-      } yield GetBlockResponse(blockId, data.slice(offset.getOrElse(0), length.getOrElse(data.size)))
+class ServerHandler(store: BlockStore) extends ChannelInboundHandlerAdapter {
 
-      result.fold(out.add, out.add)
-  }
-}
-
-class ResponseWriter extends ChannelInboundHandlerAdapter {
   override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
-    // netty will make sure this is true.
-    val f: ChannelFuture = msg.asInstanceOf[MessageResponse] match {
-      case GetBlockResponse(blockId, data) =>
-        val size = data.size + Longs.BYTES
-        // write long doesn't seem to have a handler...
-        ctx.write(wrap(ctx, blockId.value))
-        ctx.write(wrap(data))
-      case BlockNotFound(blockId) =>
-        ctx.write(wrap(ctx, blockId.value))
-    }
-    f.addListener(ChannelFutureListener.CLOSE)
+    val rsp: Response = handle(msg.asInstanceOf[Request])
+    ctx.write(rsp)
   }
 
-  private[this] def wrap(ctx: ChannelHandlerContext, value: Long): ByteBuf =
-    ctx.alloc().buffer(Longs.BYTES).writeLong(value)
+  def handle(request: Request): Response = request.message match {
+    case GetBlock(blockId, offset, length) =>
+      store(blockId) match {
+        case Left(blockNotFound) => Response(blockNotFound)
+        case Right(data) =>
+          Response(
+            GetBlockResponse(blockId, data.slice(offset.getOrElse(0), length.getOrElse(data.size))))
+      }
+  }
 
-  private[this] def wrap(data: Array[Byte]): ByteBuf =
-    Unpooled.wrappedBuffer(data)
-
-  override def channelReadComplete(ctx: ChannelHandlerContext): Unit =
-    ctx.flush()
+  override def channelReadComplete(ctx: ChannelHandlerContext): Unit = ctx.flush()
 }
 
-
-
+class WritableEncoder extends MessageToByteEncoder[Writable] {
+  override def encode(ctx: ChannelHandlerContext, msg: Writable, out: ByteBuf): Unit = msg.write(out)
+}
