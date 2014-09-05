@@ -5,6 +5,7 @@ import io.netty.channel.{ChannelHandler, ChannelOption, ChannelInitializer}
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.handler.logging.LoggingHandler
 
 trait Server extends App {
   val port = 0
@@ -15,7 +16,7 @@ trait Server extends App {
   try {
     val childHandler = new ChannelInitializer[SocketChannel] {
       override def initChannel(ch: SocketChannel): Unit =
-        ch.pipeline().addLast(workerHandlers(): _*)
+        ch.pipeline().addLast(workerHandlers(): _*).addLast(new LoggingHandler())
     }
 
     val bootstrap = new ServerBootstrap().

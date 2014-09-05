@@ -25,5 +25,7 @@ scalacOptions ++= Seq(
 libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % scalazVersion,
   "io.netty" % "netty-all" % "4.0.21.Final",
+  "com.google.guava" % "guava" % "18.0",
+  "ch.qos.logback" % "logback-classic" % "1.1.2",
   "org.scalatest" %% "scalatest" % "2.2.0" % "test"
 )
