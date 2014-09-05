@@ -3,11 +3,10 @@ package com.github.dcapwell.netty.examples.block
 import java.util
 
 import com.github.dcapwell.netty.examples.Server
-import com.google.common.base.Charsets
 import com.google.common.primitives.Longs
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
-import io.netty.handler.codec.{MessageToByteEncoder, ByteToMessageDecoder}
+import io.netty.handler.codec.{ByteToMessageDecoder, MessageToByteEncoder}
 
 object BlockServer extends Server {
   lazy val store: BlockStore = {
@@ -55,7 +54,6 @@ class RequestDecoder extends ByteToMessageDecoder {
       val blockId = BlockId(buf.readLong())
       val data = Array.ofDim[Byte](header.messageSize.value - Longs.BYTES)
       buf.readBytes(data, 0, data.length)
-      println(new String(data, Charsets.UTF_8))
       PutBlock(blockId, data)
   }
 }

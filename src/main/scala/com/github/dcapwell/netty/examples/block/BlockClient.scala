@@ -3,13 +3,13 @@ package com.github.dcapwell.netty.examples.block
 import java.util
 
 import com.github.dcapwell.netty.examples.Client
-import com.google.common.base.Charsets
-import io.netty.buffer.{Unpooled, ByteBuf}
+import com.google.common.base.{Charsets, Strings}
+import io.netty.buffer.{ByteBuf, Unpooled}
 import io.netty.channel._
 import io.netty.handler.codec.{MessageToByteEncoder, MessageToMessageEncoder}
 
 object BlockClient extends App {
-  lazy val Port = 57033
+  lazy val Port = 60389
 
   new Client {
     override def port: Int = Port
@@ -42,7 +42,14 @@ abstract class PrintReader extends ChannelInboundHandlerAdapter {
       println(s"Version: ${in.readLong()}")
       println(s"Type: ${MessageResponseType(in.readInt())}")
       println(s"Size: ${in.readInt()}")
-      println(in.toString(Charsets.UTF_8))
+      println(s"BlockId: ${in.readLong()}")
+      val data = in.toString(Charsets.UTF_8)
+      val expected = DataGenerator.generateRaw()
+      println(s"Data:     $data")
+      println(s"Expected: $expected")
+      if (data.equals(expected)) {
+        throw new AssertionError("Does not match!")
+      }
       ctx.close()
     }
   }
@@ -60,9 +67,17 @@ class GetWorker extends PrintReader {
   }
 }
 
+object DataGenerator {
+  def generate(): Array[Byte] =
+    generateRaw().getBytes(Charsets.UTF_8)
+
+  def generateRaw(): String =
+    Strings.repeat("Foo Bar Baz!", 1000000)
+}
+
 class PutWorker extends PrintReader {
   override def channelActive(ctx: ChannelHandlerContext): Unit = {
-    ctx.writeAndFlush(put(BlockId(10), "This is data that I would like to save; by the way, this is much longer than that foo bar baz message.  I hope this works!".getBytes()))
+    ctx.writeAndFlush(put(BlockId(10), DataGenerator.generate()))
   }
 
   private[this] def put(blockId: BlockId, data: Array[Byte]): Request = {
