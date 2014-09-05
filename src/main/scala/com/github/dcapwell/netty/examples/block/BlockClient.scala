@@ -8,15 +8,31 @@ import io.netty.buffer.{Unpooled, ByteBuf}
 import io.netty.channel._
 import io.netty.handler.codec.{MessageToByteEncoder, MessageToMessageEncoder}
 
-object BlockClient extends Client {
-  override def port: Int = 56988
+object BlockClient extends App {
+  lazy val Port = 57033
 
-  override def pipeline: List[ChannelHandler] = List(
-    new HeaderEncoder,
-    new MessageEncoder,
-    new RequestEncoder,
-    new PutWorker
-  )
+  new Client {
+    override def port: Int = Port
+
+    override def pipeline: List[ChannelHandler] = List(
+      new HeaderEncoder,
+      new MessageEncoder,
+      new RequestEncoder,
+      new PutWorker
+    )
+  }
+  Thread.sleep(100)
+
+  new Client {
+    override def port: Int = Port
+
+    override def pipeline: List[ChannelHandler] = List(
+      new HeaderEncoder,
+      new MessageEncoder,
+      new RequestEncoder,
+      new GetWorker
+    )
+  }
 }
 
 abstract class PrintReader extends ChannelInboundHandlerAdapter {
@@ -46,7 +62,7 @@ class GetWorker extends PrintReader {
 
 class PutWorker extends PrintReader {
   override def channelActive(ctx: ChannelHandlerContext): Unit = {
-    ctx.writeAndFlush(put(BlockId(10), "This is data that I would like to save".getBytes()))
+    ctx.writeAndFlush(put(BlockId(10), "This is data that I would like to save; by the way, this is much longer than that foo bar baz message.  I hope this works!".getBytes()))
   }
 
   private[this] def put(blockId: BlockId, data: Array[Byte]): Request = {
