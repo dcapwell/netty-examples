@@ -17,7 +17,9 @@ object Message {
 
 case class GetBlock(blockId: BlockId, offset: Option[Int], length: Option[Int]) extends Message
 
+case class PutBlock(blockId: BlockId, data: Array[Byte]) extends Message
+
 object MessageType extends Enumeration {
   type MessageType = Value
-  val Get = Value
+  val Get, Put = Value
 }

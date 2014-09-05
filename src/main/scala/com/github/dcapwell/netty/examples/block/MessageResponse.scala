@@ -11,6 +11,10 @@ case class GetBlockResponse(blockId: BlockId, data: Array[Byte]) extends Message
   }
 }
 
+case class PutBlockSuccess(blockId: BlockId) extends MessageResponse {
+  override def write(out: ByteBuf): Unit = blockId.write(out)
+}
+
 case class BlockNotFound(blockId: BlockId) extends MessageResponse {
   override def write(out: ByteBuf): Unit = blockId.write(out)
 }
