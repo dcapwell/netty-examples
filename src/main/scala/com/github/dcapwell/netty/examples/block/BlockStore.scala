@@ -1,7 +1,7 @@
 package com.github.dcapwell.netty.examples.block
 
-trait BlockStore {
-   def apply(blockId: BlockId): Either[BlockNotFound, Array[Byte]]
+trait BlockStore[Key] {
+  def apply(key: Key): Option[Array[Byte]]
 
-  def add(blockId: BlockId, value: Array[Byte]): Unit
- }
+  def add(key: Key, value: Array[Byte]): Unit
+}

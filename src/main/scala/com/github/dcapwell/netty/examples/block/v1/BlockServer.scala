@@ -1,16 +1,17 @@
-package com.github.dcapwell.netty.examples.block
+package com.github.dcapwell.netty.examples.block.v1
 
 import java.util
 
 import com.github.dcapwell.netty.examples.Server
+import com.github.dcapwell.netty.examples.block.{ConcurrentBlockStore, BlockStore}
 import com.google.common.primitives.Longs
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.handler.codec.{ByteToMessageDecoder, MessageToByteEncoder}
 
 object BlockServer extends Server {
-  lazy val store: BlockStore = {
-    val store = new ConcurrentBlockStore
+  lazy val store: BlockStore[BlockId] = {
+    val store = new ConcurrentBlockStore[BlockId]
 
     store add(BlockId(0), "Hello World!".getBytes())
     store add(BlockId(1), "Its me, Tachyon!".getBytes())
@@ -23,8 +24,6 @@ object BlockServer extends Server {
     new ServerHandler(store)
   )
 }
-
-import com.github.dcapwell.netty.examples.block.MessageType._
 
 class RequestDecoder extends ByteToMessageDecoder {
 
@@ -48,9 +47,9 @@ class RequestDecoder extends ByteToMessageDecoder {
     messageSize = Size(buffer.readInt()))
 
   private[this] def parseMessage(buf: ByteBuf, header: RequestHeader): Message = header.messageType match {
-    case Get =>
+    case MessageType.Get =>
       GetBlock(BlockId(buf.readLong()), Message.wrap(buf.readInt()), Message.wrap(buf.readInt()))
-    case Put =>
+    case MessageType.Put =>
       val blockId = BlockId(buf.readLong())
       val data = Array.ofDim[Byte](header.messageSize.value - Longs.BYTES)
       buf.readBytes(data, 0, data.length)
@@ -58,7 +57,7 @@ class RequestDecoder extends ByteToMessageDecoder {
   }
 }
 
-class ServerHandler(store: BlockStore) extends ChannelInboundHandlerAdapter {
+class ServerHandler(store: BlockStore[BlockId]) extends ChannelInboundHandlerAdapter {
 
   override def channelRead(ctx: ChannelHandlerContext, msg: scala.Any): Unit = {
     val rsp: Response = handle(msg.asInstanceOf[Request])
@@ -68,8 +67,8 @@ class ServerHandler(store: BlockStore) extends ChannelInboundHandlerAdapter {
   def handle(request: Request): Response = request.message match {
     case GetBlock(blockId, offset, length) =>
       store(blockId) match {
-        case Left(blockNotFound) => Response(blockNotFound)
-        case Right(data) =>
+        case None => Response(BlockNotFound(blockId))
+        case Some(data) =>
           Response(
             GetBlockResponse(blockId, data.slice(offset.getOrElse(0), length.getOrElse(data.size))))
       }

@@ -4,17 +4,13 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.collection.mutable
 
-class ConcurrentBlockStore extends BlockStore {
+class ConcurrentBlockStore[Key] extends BlockStore[Key] {
 
   import scala.collection.convert.WrapAsScala._
 
-  val data: mutable.ConcurrentMap[BlockId, Array[Byte]] = new ConcurrentHashMap[BlockId, Array[Byte]]
+  val data: mutable.ConcurrentMap[Key, Array[Byte]] = new ConcurrentHashMap[Key, Array[Byte]]
 
-  override def apply(blockId: BlockId): Either[BlockNotFound, Array[Byte]] = {
-    val result = data.get(blockId)
-    result.toRight(BlockNotFound(blockId))
-  }
+  override def apply(key: Key): Option[Array[Byte]] = data.get(key)
 
-  override def add(blockId: BlockId, value: Array[Byte]): Unit =
-    data.put(blockId, value)
+  override def add(key: Key, value: Array[Byte]): Unit = data.put(key, value)
 }
