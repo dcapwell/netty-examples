@@ -44,7 +44,7 @@ abstract class PrintReader extends ChannelInboundHandlerAdapter {
       println(s"Size: ${in.readInt()}")
       println(s"BlockId: ${in.readLong()}")
       val data = in.toString(Charsets.UTF_8)
-      val expected = DataGenerator.generateRaw()
+      val expected = DataGenerator.generateRaw
       println(s"Data:     $data")
       println(s"Expected: $expected")
       if (data.equals(expected)) {
@@ -69,9 +69,9 @@ class GetWorker extends PrintReader {
 
 object DataGenerator {
   def generate(): Array[Byte] =
-    generateRaw().getBytes(Charsets.UTF_8)
+    generateRaw.getBytes(Charsets.UTF_8)
 
-  def generateRaw(): String =
+  val generateRaw: String =
     Strings.repeat("Foo Bar Baz!", 1000000)
 }
 
