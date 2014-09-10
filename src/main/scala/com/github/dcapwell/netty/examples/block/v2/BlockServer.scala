@@ -42,35 +42,60 @@ class RequestHeaderDecoder(store: BlockStore[BlockId]) extends ByteToMessageDeco
   override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
     if (in.readableBytes() >= Request.HeaderSize) {
       val header = RequestHeader(version = Version(in.readLong()),
-        tpe = RequestType(in.readInt()),
-        blockId = BlockId(in.readLong()))
+        tpe = RequestType(in.readInt()))
       header.tpe match {
         case RequestType.GetBlock =>
-          ctx.pipeline().addLast(getBlockPipeline(header.blockId): _*)
+          ctx.pipeline().addLast(getBlockPipeline: _*)
 
         case RequestType.PutBlock =>
-          ctx.pipeline().addLast(putBlockPipeline(header.blockId): _*)
+          ctx.pipeline().addLast(putBlockPipeline: _*)
       }
 
       ctx.pipeline().remove(this)
-
-      // in case there is more data, send it to out
-      //      ctx.fireChannelRead(in.retain())
     }
   }
 
-  private[this] def getBlockPipeline(blockId: BlockId): List[ChannelHandler] = List(
-
+  private[this] def getBlockPipeline: List[ChannelHandler] = List(
+//    new GetPacketDecoder(blockId, store)
   )
 
-  private[this] def putBlockPipeline(blockId: BlockId): List[ChannelHandler] = List(
-    new PacketDecoder,
-    new PacketAccumulator(blockId, store),
-    new PutBlockSuccessResponder
+  private[this] def putBlockPipeline: List[ChannelHandler] = List(
+    new PutDecoder(store),
+    new PutPacketDecoder
+    //    new PacketAccumulator(blockId, store),
+//    new PutBlockSuccessResponder
   )
 }
 
-class PacketDecoder extends ByteToMessageDecoder {
+//class GetPacketDecoder(blockId: BlockId, store: BlockStore[BlockId]) extends ByteToMessageDecoder {
+//  override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
+//    if (in.readableBytes() >= Request.GetBlockSize) {
+//      val request = GetBlock(wrap(in.readInt()), wrap(in.readInt()))
+//      store(blockId) match {
+//        case Some(data) =>
+//          val header = ResponseHeader(ResponseType.GetBlockResponse, blockId)
+//          val rsp = GetBlockResponse(blockId, data)
+//        case None =>
+//          val header = ResponseHeader(ResponseType.BlockNotFound, blockId)
+//          val rsp = BlockNotFound(blockId)
+//      }
+//    }
+//  }
+//
+//  private[this] def wrap(value: Int): Option[Int] = if (value >= 0) Some(value) else None
+//}
+
+class PutDecoder(store: BlockStore[BlockId]) extends ByteToMessageDecoder {
+  override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
+    if (in.readableBytes() >= Request.PutSize) {
+      val header = PutBlock(BlockId(in.readLong()))
+      ctx.pipeline().addLast(new PacketAccumulator(header.blockId, store), new PutBlockSuccessResponder)
+      ctx.pipeline().remove(this)
+    }
+  }
+}
+
+class PutPacketDecoder extends ByteToMessageDecoder {
   override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
     if (in.readableBytes() >= Request.PacketHeaderSize) {
       val readerIndex = in.readerIndex()
@@ -89,6 +114,7 @@ class PacketDecoder extends ByteToMessageDecoder {
 
         out.add(PutPacket(header, data))
         ctx.pipeline().remove(this)
+        //TODO there may be more data in the buff, how do i make sure its processed?
       }
     }
   }
@@ -120,12 +146,10 @@ class PacketAccumulator(blockId: BlockId, store: BlockStore[BlockId]) extends Me
 
 class PutBlockSuccessResponder extends MessageToMessageDecoder[PutBlockSuccess] {
   override def decode(ctx: ChannelHandlerContext, msg: PutBlockSuccess, out: util.List[AnyRef]): Unit = {
-    val rsp = msg
-
-    val header = ResponseHeader(ResponseType.PutBlockSuccess, rsp.blockId)
+    val header = ResponseHeader(ResponseType.PutBlockSuccess, msg.blockId)
 
     ctx.write(ctx.alloc().buffer(Ints.BYTES).writeInt(header.tpe.id))
-    ctx.write(ctx.alloc().buffer(Longs.BYTES).writeLong(rsp.blockId.value))
+    ctx.write(ctx.alloc().buffer(Longs.BYTES).writeLong(msg.blockId.value))
     ctx.flush()
   }
 }
