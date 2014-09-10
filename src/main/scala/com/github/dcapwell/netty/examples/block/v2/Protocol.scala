@@ -31,11 +31,11 @@ object ResponseType extends Enumeration {
   val GetBlockResponse, PutBlockSuccess, BlockNotFound = Value
 }
 
-case class ResponseHeader(tpe: ResponseType.ResponseType, blockId: BlockId)
+case class ResponseHeader(tpe: ResponseType.ResponseType)
 
 sealed trait Response extends Any
 
-case class GetBlockResponse(blockId: BlockId, data: Array[Byte]) extends Response
+case class GetBlockResponse(blockId: BlockId, length: Int, data: Array[Byte]) extends Response
 
 case class PutBlockSuccess(blockId: BlockId) extends Response
 

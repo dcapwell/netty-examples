@@ -5,7 +5,7 @@ import java.util
 import com.github.dcapwell.netty.examples.Server
 import com.github.dcapwell.netty.examples.block.{BlockStore, ConcurrentBlockStore}
 import com.google.common.primitives.{Ints, Longs}
-import io.netty.buffer.ByteBuf
+import io.netty.buffer.{ByteBuf, Unpooled}
 import io.netty.channel.{ChannelHandler, ChannelHandlerContext}
 import io.netty.handler.codec.{ByteToMessageDecoder, MessageToMessageDecoder}
 
@@ -56,40 +56,49 @@ class RequestHeaderDecoder(store: BlockStore[BlockId]) extends ByteToMessageDeco
   }
 
   private[this] def getBlockPipeline: List[ChannelHandler] = List(
-//    new GetPacketDecoder(blockId, store)
+    new GetPacketDecoder(store)
   )
 
   private[this] def putBlockPipeline: List[ChannelHandler] = List(
-    new PutDecoder(store),
-    new PutPacketDecoder
-    //    new PacketAccumulator(blockId, store),
-//    new PutBlockSuccessResponder
+    new PutDecoder(store)
   )
 }
 
-//class GetPacketDecoder(blockId: BlockId, store: BlockStore[BlockId]) extends ByteToMessageDecoder {
-//  override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
-//    if (in.readableBytes() >= Request.GetBlockSize) {
-//      val request = GetBlock(wrap(in.readInt()), wrap(in.readInt()))
-//      store(blockId) match {
-//        case Some(data) =>
-//          val header = ResponseHeader(ResponseType.GetBlockResponse, blockId)
-//          val rsp = GetBlockResponse(blockId, data)
-//        case None =>
-//          val header = ResponseHeader(ResponseType.BlockNotFound, blockId)
-//          val rsp = BlockNotFound(blockId)
-//      }
-//    }
-//  }
-//
-//  private[this] def wrap(value: Int): Option[Int] = if (value >= 0) Some(value) else None
-//}
+class GetPacketDecoder(store: BlockStore[BlockId]) extends ByteToMessageDecoder {
+  override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
+    if (in.readableBytes() >= Request.GetBlockSize) {
+      val request = GetBlock(BlockId(in.readLong()), wrap(in.readInt()), wrap(in.readInt()))
+      val blockId = request.blockId
+      store(blockId) match {
+        case Some(data) =>
+          val header = ResponseHeader(ResponseType.GetBlockResponse)
+          ctx.write(ctx.alloc().buffer(Ints.BYTES).writeInt(header.tpe.id))
+
+          val rsp = GetBlockResponse(blockId, data.length, data)
+          ctx.write(ctx.alloc().buffer(Longs.BYTES).writeLong(rsp.blockId.value))
+          ctx.write(ctx.alloc().buffer(Ints.BYTES).writeInt(rsp.length))
+          ctx.writeAndFlush(Unpooled.wrappedBuffer(rsp.data))
+        case None =>
+          val header = ResponseHeader(ResponseType.BlockNotFound)
+          ctx.write(ctx.alloc().buffer(Ints.BYTES).writeInt(header.tpe.id))
+
+          val rsp = BlockNotFound(blockId)
+          ctx.writeAndFlush(ctx.alloc().buffer(Longs.BYTES).writeLong(rsp.blockId.value))
+      }
+    }
+  }
+
+  private[this] def wrap(value: Int): Option[Int] = if (value >= 0) Some(value) else None
+}
 
 class PutDecoder(store: BlockStore[BlockId]) extends ByteToMessageDecoder {
   override def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: util.List[AnyRef]): Unit = {
     if (in.readableBytes() >= Request.PutSize) {
       val header = PutBlock(BlockId(in.readLong()))
-      ctx.pipeline().addLast(new PacketAccumulator(header.blockId, store), new PutBlockSuccessResponder)
+      //      ctx.pipeline().addLast(new PutPacketDecoder, new PacketAccumulator(header.blockId, store), new PutBlockSuccessResponder)
+      ctx.pipeline().addLast("packet parser", new PutPacketDecoder)
+      ctx.pipeline().addLast("packet accumulator", new PacketAccumulator(header.blockId, store))
+      ctx.pipeline().addLast("success response", new PutBlockSuccessResponder)
       ctx.pipeline().remove(this)
     }
   }
@@ -126,11 +135,12 @@ class PacketAccumulator(blockId: BlockId, store: BlockStore[BlockId]) extends Me
 
   override def decode(ctx: ChannelHandlerContext, msg: PutPacket, out: util.List[AnyRef]): Unit = {
     if (msg.header.last) {
+      data += msg.data
       store.add(blockId, merge())
       out.add(PutBlockSuccess(blockId))
       ctx.pipeline().remove(this)
     }
-    else data +: msg.data
+    else data += msg.data
   }
 
   private[this] def merge(): Array[Byte] = {
@@ -146,8 +156,7 @@ class PacketAccumulator(blockId: BlockId, store: BlockStore[BlockId]) extends Me
 
 class PutBlockSuccessResponder extends MessageToMessageDecoder[PutBlockSuccess] {
   override def decode(ctx: ChannelHandlerContext, msg: PutBlockSuccess, out: util.List[AnyRef]): Unit = {
-    val header = ResponseHeader(ResponseType.PutBlockSuccess, msg.blockId)
-
+    val header = ResponseHeader(ResponseType.PutBlockSuccess)
     ctx.write(ctx.alloc().buffer(Ints.BYTES).writeInt(header.tpe.id))
     ctx.write(ctx.alloc().buffer(Longs.BYTES).writeLong(msg.blockId.value))
     ctx.flush()
